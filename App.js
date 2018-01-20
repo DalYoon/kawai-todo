@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { StyleSheet, Text, View, StatusBar, TextInput, Dimensions, Platform, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, StatusBar, TextInput, Dimensions, Platform, ScrollView, AsyncStorage } from 'react-native';
 import ToDo from './ToDo';
 import { AppLoading } from 'expo';
 import uuidv1 from 'uuid/v1';
@@ -39,7 +39,7 @@ export default class App extends Component {
               onSubmitEditing={this._addToDo} 
             />
             <ScrollView contentContainerStyle={styles.toDos} >
-              {Object.values(toDos).map(toDo => 
+              {Object.values(toDos).reverse().map(toDo => 
                 <ToDo 
                   key={toDo.id} 
                   deleteToDo={this._deleteToDo} 
@@ -59,8 +59,16 @@ export default class App extends Component {
     this.setState({ newToDo: text });
   };
 
-  _loadToDos = () => { 
-    this.setState({ loadedToDos: true }); 
+  _loadToDos = async () => { 
+    try{
+      const toDos = await AsyncStorage.getItem("toDos");
+      const parsedToDos = JSON.parse(toDos);
+      this.setState({ 
+        loadedToDos: true, toDos: parsedToDos || {}
+      });
+    } catch(err) {
+      console.log(err);
+    } 
   };
 
   _addToDo = () => {
@@ -84,6 +92,7 @@ export default class App extends Component {
             ...newToDoObject
           }
         };
+        this._saveToDos(newState.toDos);
         return { ...newState }
       });
     };
@@ -97,6 +106,7 @@ export default class App extends Component {
         ...prevState,
         ...toDos
       };
+      this._saveToDos(newState.toDos);
       return {...newState};
     });
   };
@@ -107,12 +117,10 @@ export default class App extends Component {
         ...prevState,
         toDos: {
           ...prevState.toDos,
-          [id]: {
-            ...prevState.toDos[id],
-            isCompleted: true
-          }
+          [id]: { ...prevState.toDos[id], isCompleted: true }
         }
       };
+      this._saveToDos(newState.toDos);
       return { ...newState };
     });
   };
@@ -123,12 +131,10 @@ export default class App extends Component {
         ...prevState,
         toDos: {
           ...prevState.toDos,
-          [id]: {
-            ...prevState.toDos[id],
-            isCompleted: false
-          }
+          [id]: { ...prevState.toDos[id], isCompleted: false }
         }
       };
+      this._saveToDos(newState.toDos);
       return { ...newState };
     });
   };
@@ -139,14 +145,16 @@ export default class App extends Component {
         ...prevState,
         toDos: {
           ...prevState.toDos,
-          [id]: {
-            ...prevState.toDos[id],
-            text: text
-          }
+          [id]: { ...prevState.toDos[id], text: text }
         }
       };
+      this._saveToDos(newState.toDos);
       return { ...newState };
     });
+  };
+
+  _saveToDos = newToDo => {
+    const saveToDo = AsyncStorage.setItem("toDos", JSON.stringify(newToDo));
   };
 
 }
